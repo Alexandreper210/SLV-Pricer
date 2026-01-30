@@ -6,7 +6,7 @@ from scipy.stats import norm
 from scipy.optimize import brentq
 
 # ==========================================
-# 1. UTILITAIRES FINANCIERS (SMART OTM)
+# 1. Bases
 # ==========================================
 
 def bs_price(vol, S, K, T, r=0, option_type='call'):
@@ -480,4 +480,5 @@ elif app_mode == "Pricing & Grecs Multi-Produits":
             * **Digitale (Binaire) :**
                 * Le prix représente grossièrement la **Probabilité risque-neutre** de finir au-dessus du strike.
                 * *Attention :* Le Gamma est souvent instable (bruit Monte Carlo) car le payoff est une "marche d'escalier" brutale.
+
             """)
