@@ -351,7 +351,7 @@ elif app_mode == "Surface de Volatilité (3D)":
             Z_surface = np.array(surface_iv)
 
         st.success("Surface générée avec méthode OTM !")
-        tab1, tab2, tab3 = st.tabs(["Surface 3D", "Term Structure", "Skew Correct"])
+        tab1, tab2, tab3 = st.tabs(["Surface 3D", "Term Structure", "Skew "])
         
         with tab1:
             fig_3d = go.Figure(data=[go.Surface(z=Z_surface, x=strikes, y=maturities, colorscale='Jet')])
@@ -482,3 +482,4 @@ elif app_mode == "Pricing & Grecs Multi-Produits":
                 * *Attention :* Le Gamma est souvent instable (bruit Monte Carlo) car le payoff est une "marche d'escalier" brutale.
 
             """)
+
