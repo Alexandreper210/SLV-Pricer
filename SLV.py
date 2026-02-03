@@ -268,8 +268,7 @@ def prepare_calibration_data(market_data, moneyness_range=(0.80, 1.20)):
         (options['moneyness'] >= moneyness_range[0]) &
         (options['moneyness'] <= moneyness_range[1]) &
         (options['market_price'] > 0.05) &
-        (options['market_iv'] > 0.05) &
-        (options['market_iv'] < 2.5)
+        (options['market_iv'] > 0.01)
     ]
     
     options['S0'] = S0
@@ -334,6 +333,8 @@ def calibrate_bergomi_hierarchical(market_data, progress_callback=None):
     """
     Calibration hiérarchique corrigée (5 paramètres en Step 2)
     """
+    if market_data.empty: # Sécurité ultime
+        return None
     # ÉTAPE 1 : Calibration ATM (xi0, vol_of_vol, rhoSVol initial)
     if progress_callback:
         progress_callback("Step 1/2 : Calibration ATM...")
@@ -587,7 +588,7 @@ with st.sidebar:
     st.markdown("""
     <div style="text-align: center; margin-bottom: 20px;">
         <h3>Contact</h3>
-        <p>Project developed by<b>Alexandre Perier</b></p>
+        <p>Project developed by <b>Alexandre Perier</b></p>
         <a href="https://www.linkedin.com/in/alexandre-perier-46510b264/" target="_blank">
             <button style="
                 background-color: #0072b1; 
@@ -1220,5 +1221,6 @@ print(f"Call Price: {{call_price:.2f}}€")
     
     else:
         st.info("Please download market data first to begin the calibration engine.")
+
 
 
