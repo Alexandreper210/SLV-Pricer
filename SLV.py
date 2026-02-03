@@ -195,72 +195,45 @@ def compute_greeks(model, S0, K, T, N_steps, N_paths, product_type, barrier_lvl)
 # ==========================================
 
 def get_market_data_yahoo(ticker='SPY', target_dte=30):
-    """
-    Récupère les données d'options depuis Yahoo Finance
-    """
     stock = yf.Ticker(ticker)
-    S0 = stock.history(period='1d')['Close'].iloc[-1]
+    # Récupération sécurisée du Spot
+    hist = stock.history(period='5d') # On prend 5j pour être sûr d'avoir un prix
+    if hist.empty: raise ValueError(f"Ticker {ticker} non trouvé.")
+    S0 = hist['Close'].iloc[-1]
     
     expirations = stock.options
-    if len(expirations) == 0:
-        raise ValueError(f"Aucune option disponible pour {ticker}")
+    if not expirations: raise ValueError(f"Pas d'options pour {ticker}")
     
-    # Trouver la date d'expiration la plus proche du DTE souhaité
     today = datetime.now()
-    target_date = None
-    min_diff = float('inf')
+    target_date = min(expirations, key=lambda x: abs((datetime.strptime(x, '%Y-%m-%d') - today).days - target_dte))
     
-    for exp_date_str in expirations:
-        exp_date = datetime.strptime(exp_date_str, '%Y-%m-%d')
-        dte = (exp_date - today).days
-        
-        if abs(dte - target_dte) < min_diff and dte > 0:
-            min_diff = abs(dte - target_dte)
-            target_date = exp_date_str
-    
-    if target_date is None:
-        raise ValueError("Aucune date d'expiration valide trouvée")
-    
-    # Récupérer la chaîne d'options
     opt_chain = stock.option_chain(target_date)
-    
-    calls = opt_chain.calls
-    puts = opt_chain.puts
-    
-    # Calculer la maturité en années
     T = (datetime.strptime(target_date, '%Y-%m-%d') - today).days / 365.25
-    
-    # Nettoyer les données
-    calls_clean = calls[['strike', 'lastPrice', 'bid', 'ask', 'volume', 'impliedVolatility']].copy()
-    puts_clean = puts[['strike', 'lastPrice', 'bid', 'ask', 'volume', 'impliedVolatility']].copy()
-    
-    calls_clean = calls_clean[
-        (calls_clean['volume'] > 0) & 
-        (calls_clean['bid'] > 0) & 
-        (calls_clean['ask'] > 0) &
-        (calls_clean['impliedVolatility'] > 0)
-    ]
-    
-    puts_clean = puts_clean[
-        (puts_clean['volume'] > 0) & 
-        (puts_clean['bid'] > 0) & 
-        (puts_clean['ask'] > 0) &
-        (puts_clean['impliedVolatility'] > 0)
-    ]
-    
-    calls_clean['mid_price'] = (calls_clean['bid'] + calls_clean['ask']) / 2
-    puts_clean['mid_price'] = (puts_clean['bid'] + puts_clean['ask']) / 2
+
+    # --- NETTOYAGE ROBUSTE ---
+    def clean_df(df):
+        df = df.copy()
+        # On garde les colonnes essentielles
+        cols = ['strike', 'lastPrice', 'bid', 'ask', 'volume', 'impliedVolatility']
+        df = df[cols]
+        
+        # Fallback pour le prix : si bid/ask sont à 0, on prend lastPrice
+        df['mid_price'] = (df['bid'] + df['ask']) / 2
+        df.loc[df['mid_price'] <= 0, 'mid_price'] = df['lastPrice']
+        
+        # Filtres minimums (on enlève les IV aberrantes)
+        mask = (df['impliedVolatility'] > 0.001) & (df['impliedVolatility'] < 2.5)
+        return df[mask]
+
+    calls_clean = clean_df(opt_chain.calls)
+    puts_clean = clean_df(opt_chain.puts)
     
     return {
-        'ticker': ticker,
-        'S0': S0,
-        'T': T,
-        'calls': calls_clean,
-        'puts': puts_clean,
+        'ticker': ticker, 'S0': S0, 'T': T,
+        'calls': calls_clean, 'puts': puts_clean,
         'expiration': target_date,
         'dte': (datetime.strptime(target_date, '%Y-%m-%d') - today).days
     }
-
 
 def prepare_calibration_data(market_data, moneyness_range=(0.80, 1.20)):
     """
@@ -981,7 +954,7 @@ elif app_mode == "Market Data Calibration":
     col1, col2 = st.columns([3, 1])
     
     with col1:
-        if st.button("Download Market Dat", type="primary", width='stretch'):
+        if st.button("Download Market Data", type="primary", width='stretch'):
             with st.spinner(f"Fetching {ticker} option chains from Yahoo Finance..."):
                 try:
                     market_data_raw = get_market_data_yahoo(ticker, target_dte)
@@ -1240,3 +1213,4 @@ print(f"Call Price: {{call_price:.2f}}€")
     
     else:
         st.info("Please download market data first to begin the calibration engine.")
+
