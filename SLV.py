@@ -4,7 +4,6 @@ import plotly.graph_objects as go
 import time
 from scipy.stats import norm
 from scipy.optimize import brentq
-# Ajouter après vos imports existants
 import yfinance as yf
 import pandas as pd
 import json
@@ -14,7 +13,7 @@ from scipy.optimize import minimize, differential_evolution
 
 
 # ==========================================
-# 1. UTILITAIRES FINANCIERS (SMART OTM)
+# Fonctions de Base
 # ==========================================
 
 def bs_price(vol, S, K, T, r=0, option_type='call'):
@@ -138,13 +137,13 @@ def calculate_payoff(S_paths, K, product_type, barrier_level=None):
         is_alive = min_reached > barrier_level # Doit rester AU-DESSUS
         return np.maximum(K - final_spot, 0) * is_alive
         
-    # Put Down-and-In ---
+    # --- NOUVEAU : Put Down-and-In ---
     elif product_type == "Barrier Put (Down-and-In)":
         min_reached = np.min(S_paths, axis=0)
         is_activated = min_reached <= barrier_level # Doit TOUCHER la barrière pour s'activer
         return np.maximum(K - final_spot, 0) * is_activated
         
-    # Digitale (Call Binaire) ---
+    # --- NOUVEAU : Digitale (Call Binaire) ---
     elif product_type == "Digital Call (Cash-or-Nothing)":
         # Paie 1€ si S_T > K, sinon 0
         return 1.0 * (final_spot > K)
@@ -236,14 +235,14 @@ def get_market_data_yahoo(ticker='SPY', target_dte=30):
     puts_clean = puts[['strike', 'lastPrice', 'bid', 'ask', 'volume', 'impliedVolatility']].copy()
     
     calls_clean = calls_clean[
-        (calls_clean['volume'] > 5) & 
+        (calls_clean['volume'] > 0) & 
         (calls_clean['bid'] > 0) & 
         (calls_clean['ask'] > 0) &
         (calls_clean['impliedVolatility'] > 0)
     ]
     
     puts_clean = puts_clean[
-        (puts_clean['volume'] > 5) & 
+        (puts_clean['volume'] > 0) & 
         (puts_clean['bid'] > 0) & 
         (puts_clean['ask'] > 0) &
         (puts_clean['impliedVolatility'] > 0)
@@ -295,9 +294,9 @@ def prepare_calibration_data(market_data, moneyness_range=(0.80, 1.20)):
     options = options[
         (options['moneyness'] >= moneyness_range[0]) &
         (options['moneyness'] <= moneyness_range[1]) &
-        (options['market_price'] > 0.1) &
+        (options['market_price'] > 0.05) &
         (options['market_iv'] > 0.05) &
-        (options['market_iv'] < 1.0)
+        (options['market_iv'] < 2.5)
     ]
     
     options['S0'] = S0
@@ -460,19 +459,25 @@ def validate_calibration(calibration_result):
         K = row['strike']
         market_iv = row['market_iv']
         market_price = row['market_price']
-        option_type = row['type']
         
-        if option_type == 'call':
+        # 1. Standardisation stricte (Extraction du type pur)
+        raw_type = str(row['type']).lower()
+        clean_type = 'call' if 'call' in raw_type else 'put' #
+
+        # 2. Calcul du Payoff avec le type propre
+        if clean_type == 'call':
             payoff = np.maximum(S_paths[-1, :] - K, 0)
         else:
             payoff = np.maximum(K - S_paths[-1, :], 0)
         
         price_model = np.mean(payoff)
-        iv_model = implied_vol_solver_smart(price_model, S0, K, T, 0, option_type)
+        
+        # 3. CRUCIAL : Passer clean_type au solveur pour qu'il utilise la bonne formule BS
+        iv_model = implied_vol_solver_smart(price_model, S0, K, T, 0, clean_type)
         
         results.append({
             'strike': K,
-            'type': option_type,
+            'type': clean_type, # On stocke le type propre pour les graphiques Plotly
             'market_price': market_price,
             'model_price': price_model,
             'market_iv': market_iv,
@@ -976,7 +981,7 @@ elif app_mode == "Market Data Calibration":
     col1, col2 = st.columns([3, 1])
     
     with col1:
-        if st.button("Download Market Data", type="primary", width='stretch'):
+        if st.button("Download Market Dat", type="primary", width='stretch'):
             with st.spinner(f"Fetching {ticker} option chains from Yahoo Finance..."):
                 try:
                     market_data_raw = get_market_data_yahoo(ticker, target_dte)
@@ -1125,7 +1130,7 @@ elif app_mode == "Market Data Calibration":
                 st.metric("rhoXY", f"{result['param_dict']['rhoXY']:.4f}")
             
             # Validation
-            st.markdown("### Fit Validation")
+            st.markdown("### FitValidation")
             
             with st.spinner("Calculating validation metrics..."):
                 validation_df, rmse, mae = validate_calibration(result)
@@ -1235,5 +1240,3 @@ print(f"Call Price: {{call_price:.2f}}€")
     
     else:
         st.info("Please download market data first to begin the calibration engine.")
-
-
