@@ -122,38 +122,38 @@ def calculate_payoff(S_paths, K, product_type, barrier_level=None):
     """Calcule le payoff vectorisé selon le type de produit"""
     final_spot = S_paths[-1, :]
     
-    if product_type == "Call Vanille":
+    if product_type == "Vanilla Call":
         return np.maximum(final_spot - K, 0)
         
-    elif product_type == "Put Vanille":
+    elif product_type == "Vanilla Put":
         return np.maximum(K - final_spot, 0)
         
-    elif product_type == "Call Barrière (Up-and-Out)":
+    elif product_type == "Barrier Call (Up-and-Out)":
         max_reached = np.max(S_paths, axis=0)
         is_alive = max_reached < barrier_level # Doit rester SOUS la barrière
         return np.maximum(final_spot - K, 0) * is_alive
         
-    elif product_type == "Put Barrière (Down-and-Out)":
+    elif product_type == "Barrier Put (Down-and-Out)":
         min_reached = np.min(S_paths, axis=0)
         is_alive = min_reached > barrier_level # Doit rester AU-DESSUS
         return np.maximum(K - final_spot, 0) * is_alive
         
-    # --- NOUVEAU : Put Down-and-In ---
-    elif product_type == "Put Barrière (Down-and-In)":
+    # Put Down-and-In ---
+    elif product_type == "Barrier Put (Down-and-In)":
         min_reached = np.min(S_paths, axis=0)
         is_activated = min_reached <= barrier_level # Doit TOUCHER la barrière pour s'activer
         return np.maximum(K - final_spot, 0) * is_activated
         
-    # --- NOUVEAU : Digitale (Call Binaire) ---
-    elif product_type == "Digitale Call (Cash-or-Nothing)":
+    # Digitale (Call Binaire) ---
+    elif product_type == "Digital Call (Cash-or-Nothing)":
         # Paie 1€ si S_T > K, sinon 0
         return 1.0 * (final_spot > K)
         
-    elif product_type == "Call Asiatique (Moyenne)":
+    elif product_type == "Asian Call (Average Price)":
         average_spot = np.mean(S_paths, axis=0)
         return np.maximum(average_spot - K, 0)
         
-    elif product_type == "Call Lookback (Fixed Strike)":
+    elif product_type == "Lookback Call (Fixed Strike)":
         max_spot = np.max(S_paths, axis=0)
         return np.maximum(max_spot - K, 0)
         
@@ -844,7 +844,7 @@ elif app_mode == "Multi-Asset Pricing & Greeks":
         do_comparison = st.sidebar.checkbox("Comparison Mode (Manual vs Market", value=True)
         if not do_comparison:
             mode_source = st.sidebar.radio("Single Source Selection:", ["Manual Sliders", "Last Calibration"], index=1)
-            params_final = st.session_state['calibration_result']['param_dict'] if mode_source == "Dernière Calibration" else manual_params
+            params_final = st.session_state['calibration_result']['param_dict'] if mode_source == "Last Calibration" else manual_params
         else:
             st.sidebar.info("Application will run both models simultaneously")
     else:
@@ -1235,4 +1235,5 @@ print(f"Call Price: {{call_price:.2f}}€")
     
     else:
         st.info("Please download market data first to begin the calibration engine.")
+
 
