@@ -336,12 +336,20 @@ def calibrate_bergomi_hierarchical(market_data, progress_callback=None):
     """
     # ÉTAPE 1 : Calibration ATM (xi0, vol_of_vol, rhoSVol initial)
     if progress_callback:
-        progress_callback("Étape 1/2 : Calibration ATM...")
+        progress_callback("Step 1/2 : Calibration ATM...")
     
     atm_data = market_data[
         (market_data['moneyness'] >= 0.95) & 
         (market_data['moneyness'] <= 1.05)
     ]
+    # SÉCURITÉ : Si vide, on prend les 5 options les plus proches du spot
+    if atm_data.empty:
+        market_data['dist_to_atm'] = abs(market_data['moneyness'] - 1.0)
+        atm_data = market_data.nsmallest(5, 'dist_to_atm')
+    
+    # On récupère S0 et T depuis les données complètes pour éviter le crash .iloc[0]
+    S0_global = market_data['S0'].iloc[0]
+    T_global = market_data['T'].iloc[0]
     
     def objective_step1(params_step1):
         xi0, vol_of_vol, rhoSVol = params_step1
@@ -362,7 +370,7 @@ def calibrate_bergomi_hierarchical(market_data, progress_callback=None):
     
     # ÉTAPE 2 : Calibration Skew (On ré-ajuste rhoSVol pour cambrer le smile)
     if progress_callback:
-        progress_callback("Étape 2/2 : Calibration Skew...")
+        progress_callback("Step 2/2 : Calibration Skew...")
     
     def objective_step2(params_step2):
         # IMPORTANT : On déballe bien les 5 paramètres
@@ -409,7 +417,6 @@ def calibrate_bergomi_hierarchical(market_data, progress_callback=None):
         'error': result_step2.fun,
         'market_data': market_data
     }
-
 
 def validate_calibration(calibration_result):
     """
@@ -1213,4 +1220,5 @@ print(f"Call Price: {{call_price:.2f}}€")
     
     else:
         st.info("Please download market data first to begin the calibration engine.")
+
 
