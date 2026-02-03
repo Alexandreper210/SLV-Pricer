@@ -976,7 +976,7 @@ elif app_mode == "Market Data Calibration":
     col1, col2 = st.columns([3, 1])
     
     with col1:
-        if st.button("Download Market Dat", type="primary", width='stretch'):
+        if st.button("Download Market Data", type="primary", width='stretch'):
             with st.spinner(f"Fetching {ticker} option chains from Yahoo Finance..."):
                 try:
                     market_data_raw = get_market_data_yahoo(ticker, target_dte)
@@ -1125,7 +1125,7 @@ elif app_mode == "Market Data Calibration":
                 st.metric("rhoXY", f"{result['param_dict']['rhoXY']:.4f}")
             
             # Validation
-            st.markdown("### FitValidation")
+            st.markdown("### Fit Validation")
             
             with st.spinner("Calculating validation metrics..."):
                 validation_df, rmse, mae = validate_calibration(result)
@@ -1235,3 +1235,4 @@ print(f"Call Price: {{call_price:.2f}}€")
     
     else:
         st.info("Please download market data first to begin the calibration engine.")
+
