@@ -1,4 +1,6 @@
 streamlit
 numpy
-scipy
 plotly
+scipy
+yfinance
+pandas
