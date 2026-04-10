@@ -13,7 +13,7 @@ from scipy.optimize import minimize, differential_evolution
 
 
 # ==========================================
-# Fonctions de Base
+# Fonctions de Base (bs)
 # ==========================================
 
 def bs_price(vol, S, K, T, r=0, option_type='call'):
